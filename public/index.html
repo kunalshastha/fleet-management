@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TITAN FLEET COMMAND - Enterprise Logistics & Telematics</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Top App Navigation Bar -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="1" y="3" width="15" height="13"></rect>
+          <polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon>
+          <circle cx="5.5" cy="18.5" r="2.5"></circle>
+          <circle cx="18.5" cy="18.5" r="2.5"></circle>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-title">TITAN FLEET COMMAND</div>
+        <div class="brand-sub">Enterprise Telematics &amp; Logistics OS</div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('gps')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+        Live GPS &amp; Routes
+      </button>
+      <button class="tab-btn" onclick="switchTab('fuel')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 2v6h6V2H3zm15 11a4 4 0 0 0-4-4H9v11h5a4 4 0 0 0 4-4z"></path></svg>
+        IoT Fuel &amp; Theft
+      </button>
+      <button class="tab-btn" onclick="switchTab('drivers')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        Drivers &amp; Payroll
+      </button>
+      <button class="tab-btn" onclick="switchTab('billing')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+        Freight Billing &amp; Invoices
+      </button>
+      <button class="tab-btn" onclick="switchTab('cctv')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+        Live Truck CCTV
+      </button>
+    </nav>
+
+    <!-- System Status & Controls -->
+    <div class="hud-controls">
+      <div class="telemetry-status">
+        <div class="pulse-dot"></div>
+        <span>CAN-BUS 250kbps: LIVE</span>
+      </div>
+      <button class="sim-toggle-btn" id="simToggleBtn" onclick="toggleSimulation()">
+        <span id="simIcon">⏸</span>
+        <span id="simText">Sim Running</span>
+      </button>
+      <button class="sim-toggle-btn" onclick="triggerSimulatedTheftAlert()" title="Simulate Siphoning Event">
+        ⚠️ Trigger Fuel Alarm
+      </button>
+    </div>
+  </header>
+
+  <!-- Executive KPI Bar -->
+  <section class="kpi-bar">
+    <div class="kpi-card">
+      <div class="kpi-label">Active Fleet Status <span>⚡ Realtime</span></div>
+      <div class="kpi-val" id="kpiActiveFleet">6/6 <span>Trucks En Route</span></div>
+      <div class="kpi-delta delta-up">100% On-Time Schedule</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total Day Mileage <span>IFTA Log</span></div>
+      <div class="kpi-val" id="kpiMileage">2,845 <span>mi</span></div>
+      <div class="kpi-delta delta-up">+14.2% vs avg yesterday</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Fleet Avg Efficiency <span>J1939 CAN</span></div>
+      <div class="kpi-val" id="kpiEfficiency">7.42 <span>MPG</span></div>
+      <div class="kpi-delta delta-up">Optimal Range (+0.3 MPG)</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Month-to-Date Freight Billing <span>Accounts Rec.</span></div>
+      <div class="kpi-val" id="kpiBilling">$148,920 <span>USD</span></div>
+      <div class="kpi-delta delta-up">$32,450 Net Pending</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Safety &amp; Compliance <span>FMCSA HOS</span></div>
+      <div class="kpi-val" style="color: var(--accent-emerald);">98.6% <span>Score</span></div>
+      <div class="kpi-delta delta-up">0 Active Violations</div>
+    </div>
+  </section>
+
+  <!-- Main Viewport -->
+  <main>
+    <!-- TAB 1: REAL-TIME GPS VEHICLE TRACKING & ROUTE HISTORY -->
+    <section id="tab-gps" class="tab-panel active">
+      <div class="gps-layout">
+        <!-- Fleet Roster Sidebar -->
+        <div class="fleet-sidebar">
+          <div class="sidebar-search">
+            <input type="text" class="search-input" id="truckSearchInput" placeholder="Search truck ID, driver, highway..." oninput="filterTruckList()">
+            <div class="filter-tags">
+              <span class="filter-chip active" onclick="setTruckFilter('all', this)">All (6)</span>
+              <span class="filter-chip" onclick="setTruckFilter('transit', this)">In Transit (4)</span>
+              <span class="filter-chip" onclick="setTruckFilter('idle', this)">Idling (1)</span>
+              <span class="filter-chip" onclick="setTruckFilter('loading', this)">Loading (1)</span>
+            </div>
+          </div>
+          <div class="truck-list" id="truckListContainer"></div>
+        </div>
+
+        <!-- Telematics Vector Map & History -->
+        <div class="map-container">
+          <div class="map-toolbar">
+            <div class="map-title-zone">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+              <h3 id="currentMapFocusTitle">Fleet Corridor View: Interstate Corridors</h3>
+              <span class="badge badge-transit" id="mapStatusBadge">Live Telemetry Feed</span>
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+              <button class="btn btn-secondary" onclick="resetMapView()">Center View</button>
+              <button class="btn btn-secondary" onclick="toggleGeofenceVisibility()">Toggle Geofences</button>
+            </div>
+          </div>
+
+          <div class="map-canvas-wrapper">
+            <canvas id="telematicsCanvas"></canvas>
+            
+            <!-- Live Vehicle Telemetry Card HUD -->
+            <div class="map-overlay-card" id="mapOverlayCard">
+              <div class="overlay-title">
+                <span id="hudTruckId">TRK-101 Freightliner</span>
+                <span class="badge badge-transit" id="hudStatus">En Route</span>
+              </div>
+              <div class="overlay-grid">
+                <div class="overlay-label">Driver:</div>
+                <div class="overlay-val" id="hudDriver">Marcus Vance</div>
+                
+                <div class="overlay-label">Speed:</div>
+                <div class="overlay-val" id="hudSpeed">64 MPH (Cruise)</div>
+                
+                <div class="overlay-label">Current Route:</div>
+                <div class="overlay-val" id="hudRoute">I-55 S &rarr; Dallas TX</div>
+                
+                <div class="overlay-label">Engine RPM:</div>
+                <div class="overlay-val" id="hudRpm">1,280 RPM</div>
+                
+                <div class="overlay-label">Fuel Level:</div>
+                <div class="overlay-val" id="hudFuel">84% (168 Gal)</div>
+
+                <div class="overlay-label">Next Geofence:</div>
+                <div class="overlay-val" id="hudGeofence" style="color:var(--accent-emerald);">Dallas Hub (142 mi)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Route History Playback Scrubber -->
+          <div class="history-scrubber-bar">
+            <div class="scrubber-controls">
+              <div class="scrubber-left">
+                <button class="play-btn" id="historyPlayBtn" onclick="toggleHistoryPlayback()">▶</button>
+                <span style="font-size:0.82rem; font-weight:700;">Route History Playback (Past 24h Waypoints)</span>
+                <span class="badge badge-transit" id="historySpeedBadge">Speed: 1x</span>
+              </div>
+              <div style="display:flex; gap:0.4rem;">
+                <button class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.75rem;" onclick="setPlaybackSpeed(1)">1x</button>
+                <button class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.75rem;" onclick="setPlaybackSpeed(3)">3x</button>
+                <button class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.75rem;" onclick="setPlaybackSpeed(8)">8x</button>
+              </div>
+            </div>
+            <div class="timeline-slider-container">
+              <span style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono);">00:00 (Departed)</span>
+              <input type="range" class="timeline-range" id="historySlider" min="0" max="100" value="78" oninput="onScrubberInput(this.value)">
+              <div class="timeline-timestamp" id="historyTimestamp">16:42:10 CDT</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: IoT LIVE FUEL GAUGE & THEFT DETECTION -->
+    <section id="tab-fuel" class="tab-panel">
+      <div class="fuel-dashboard-grid">
+        <!-- SVG Interactive Live Gauge -->
+        <div class="gauge-display-card">
+          <div class="gauge-header">
+            <div>
+              <h3 style="font-size:1.05rem; font-weight:800;" id="fuelGaugeTitle">TRK-101 Fuel Telemetry</h3>
+              <p style="font-size:0.75rem; color:var(--text-muted);">Ultrasonic Tank Depth Sensor + J1939 ECU Bus</p>
+            </div>
+            <span class="badge badge-transit" id="fuelSensorStatus">Sensor: Online (0.8s)</span>
+          </div>
+
+          <!-- Circular SVG Fuel Gauge -->
+          <div class="svg-gauge-box">
+            <svg viewBox="0 0 200 200" width="280" height="280">
+              <circle cx="100" cy="100" r="80" fill="none" stroke="var(--gauge-track)" stroke-width="16" stroke-dasharray="377" stroke-dashoffset="94" stroke-linecap="round" transform="rotate(135 100 100)" />
+              <circle id="fuelProgressCircle" cx="100" cy="100" r="80" fill="none" stroke="var(--accent-emerald)" stroke-width="16" stroke-dasharray="377" stroke-dashoffset="145" stroke-linecap="round" transform="rotate(135 100 100)" style="transition: stroke-dashoffset 0.5s ease, stroke 0.3s;" />
+
+              <g id="fuelNeedleGroup" style="transform-origin: 100px 100px; transition: transform 0.5s ease;">
+                <line x1="100" y1="100" x2="100" y2="30" stroke="#f1f5f9" stroke-width="3" stroke-linecap="round" />
+                <circle cx="100" cy="100" r="8" fill="#3b82f6" />
+                <circle cx="100" cy="100" r="4" fill="#ffffff" />
+              </g>
+
+              <path d="M93 155 h14 v18 h-14 z M107 160 h4 v8 h-4 z" fill="var(--text-dim)" />
+            </svg>
+            <div class="gauge-center-text">
+              <div class="gauge-percentage" id="fuelGaugePercentage">84%</div>
+              <div class="gauge-gallons" id="fuelGaugeGallons">168.0 / 200 Gal</div>
+            </div>
+          </div>
+
+          <!-- IoT Siphoning & Fuel Theft Detection Banner -->
+          <div class="fuel-theft-box" id="theftAlertBox">
+            <div class="theft-status-header">
+              <span id="theftStatusText">🛡️ Anti-Theft Guard: ACTIVE</span>
+              <span class="badge badge-paid" id="theftRiskBadge">Risk: Normal</span>
+            </div>
+            <p style="font-size:0.75rem; color:var(--text-muted);" id="theftLogText">
+              No unauthorized fuel drop detected in past 72 hrs. Sudden level drop threshold set to &gt;5 gal/min.
+            </p>
+          </div>
+          
+          <div style="margin-top:1rem; width:100%; display:flex; gap:0.5rem;">
+            <button class="btn btn-secondary" style="flex:1;" onclick="calibrateSensor()">Calibrate Tank Sensors</button>
+            <button class="btn btn-danger" style="flex:1;" onclick="triggerSimulatedTheftAlert()">Simulate Theft Event</button>
+          </div>
+        </div>
+
+        <!-- Telemetry Metrics & Charting -->
+        <div class="fuel-telemetry-panels">
+          <div class="iot-sensor-grid">
+            <div class="sensor-tile">
+              <div class="sensor-tile-label">Real-time Burn Rate</div>
+              <div class="sensor-tile-val" id="fuelBurnRate">8.4 <span>GPH</span></div>
+              <span style="font-size:0.7rem; color:var(--accent-emerald);">Cruising at 62 mph</span>
+            </div>
+            <div class="sensor-tile">
+              <div class="sensor-tile-label">Estimated Range to Empty</div>
+              <div class="sensor-tile-val" id="fuelRange">1,240 <span>mi</span></div>
+              <span style="font-size:0.7rem; color:var(--text-muted);">Adequate for Dallas drop</span>
+            </div>
+            <div class="sensor-tile">
+              <div class="sensor-tile-label">Dual Tank Balance</div>
+              <div class="sensor-tile-val" id="fuelTanksBalance">85 / 83 <span>Gal</span></div>
+              <span style="font-size:0.7rem; color:var(--accent-emerald);">Pneumatic valve balanced</span>
+            </div>
+            <div class="sensor-tile">
+              <div class="sensor-tile-label">Fuel Tank Temp / Density</div>
+              <div class="sensor-tile-val" id="fuelTemp">68.4°F <span>0.84 kg/L</span></div>
+              <span style="font-size:0.7rem; color:var(--text-muted);">ULSD #2 Specification</span>
+            </div>
+          </div>
+
+          <!-- Fuel Consumption History Chart -->
+          <div class="fuel-chart-card">
+            <div class="chart-header">
+              <div>
+                <h4 style="font-size:0.95rem; font-weight:700;">24-Hour Fuel Level &amp; Consumption Telemetry</h4>
+                <p style="font-size:0.73rem; color:var(--text-muted);">Real-time IoT polling every 1.5 seconds</p>
+              </div>
+              <div style="display:flex; gap:0.5rem;">
+                <span class="badge badge-transit">Refuel Event @ 04:30 AM (+150 Gal)</span>
+              </div>
+            </div>
+            <div class="fuel-chart-canvas-wrap">
+              <canvas id="fuelHistoryCanvas"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: DRIVER MANAGEMENT & SALARY ENGINE -->
+    <section id="tab-drivers" class="tab-panel">
+      <div class="driver-management-grid">
+        <!-- Driver Directory -->
+        <div class="driver-roster-card">
+          <div style="padding:1rem; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="font-size:0.95rem; font-weight:800;">Fleet Driver Roster</h3>
+            <button class="btn btn-secondary" style="padding:0.35rem 0.7rem; font-size:0.75rem;" onclick="openAddDriverModal()">+ Add Driver</button>
+          </div>
+          <div class="driver-list" id="driverListContainer"></div>
+        </div>
+
+        <!-- Driver Profile & Dynamic Salary Calculation -->
+        <div class="salary-engine-view">
+          <div class="salary-header-box">
+            <div class="driver-detail-hero">
+              <div class="driver-large-avatar" id="heroDriverAvatar">MV</div>
+              <div>
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                  <h2 style="font-size:1.25rem; font-weight:800;" id="heroDriverName">Marcus Vance</h2>
+                  <span class="badge badge-transit" id="heroDriverCdl">CDL-A #IL-884920</span>
+                </div>
+                <p style="font-size:0.8rem; color:var(--text-muted);" id="heroDriverTruck">Assigned to TRK-101 (Freightliner Cascadia) &bull; Safety Rating: 99.2%</p>
+              </div>
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+              <button class="btn btn-emerald" onclick="generatePayStubModal()">📄 View &amp; Print Pay Stub</button>
+            </div>
+          </div>
+
+          <!-- Electronic Log Compliance (HOS) -->
+          <div>
+            <h4 style="font-size:0.82rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:0.6rem;">FMCSA ELD Hours of Service (HOS) Clocks</h4>
+            <div class="hos-compliance-bar">
+              <div class="hos-item">
+                <span>Driving Remaining</span>
+                <strong id="hosDriveTime" style="color:var(--accent-emerald);">04h 18m</strong>
+                <div style="height:4px; background:#1e293b; border-radius:2px; margin-top:4px;">
+                  <div style="width:62%; height:100%; background:var(--accent-emerald); border-radius:2px;"></div>
+                </div>
+              </div>
+              <div class="hos-item">
+                <span>Shift Duty Left</span>
+                <strong id="hosShiftTime">06h 45m</strong>
+                <div style="height:4px; background:#1e293b; border-radius:2px; margin-top:4px;">
+                  <div style="width:51%; height:100%; background:var(--accent-cyan); border-radius:2px;"></div>
+                </div>
+              </div>
+              <div class="hos-item">
+                <span>70-Hour Cycle Left</span>
+                <strong id="hosCycleTime">28h 30m</strong>
+                <div style="height:4px; background:#1e293b; border-radius:2px; margin-top:4px;">
+                  <div style="width:40%; height:100%; background:var(--accent-blue); border-radius:2px;"></div>
+                </div>
+              </div>
+              <div class="hos-item">
+                <span>Mandatory Break In</span>
+                <strong id="hosBreakTime" style="color:var(--accent-amber);">01h 42m</strong>
+                <div style="height:4px; background:#1e293b; border-radius:2px; margin-top:4px;">
+                  <div style="width:78%; height:100%; background:var(--accent-amber); border-radius:2px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interactive Salary Calculation Engine -->
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+              <h4 style="font-size:0.85rem; font-weight:700; text-transform:uppercase; color:var(--text-muted);">Bi-Weekly Settlement &amp; Compensation Formula</h4>
+              <span style="font-size:0.75rem; color:var(--accent-cyan);">Live Formula Calculation</span>
+            </div>
+            
+            <table class="calculator-breakdown-table">
+              <thead>
+                <tr>
+                  <th>Earning Component</th>
+                  <th>Formula / Rate</th>
+                  <th>Quantity / Metric</th>
+                  <th>Subtotal ($)</th>
+                </tr>
+              </thead>
+              <tbody id="salaryCalcBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: AUTOMATED FREIGHT BILLING & INVOICE GENERATOR -->
+    <section id="tab-billing" class="tab-panel">
+      <div class="invoicing-layout">
+        <div class="invoicing-toolbar">
+          <div>
+            <h3 style="font-size:1.1rem; font-weight:800;">Logistics Invoices &amp; Accounts Receivable</h3>
+            <p style="font-size:0.78rem; color:var(--text-muted);">Automated rate calculation with fuel surcharge linked to DOE National Diesel Index</p>
+          </div>
+          <div style="display:flex; gap:0.75rem;">
+            <button class="btn btn-secondary" onclick="exportInvoicesCsv()">Export CSV</button>
+            <button class="btn" onclick="openNewInvoiceModal()">+ Create Freight Invoice</button>
+          </div>
+        </div>
+
+        <div class="invoice-table-card">
+          <table class="invoice-table">
+            <thead>
+              <tr>
+                <th>Invoice #</th>
+                <th>Shipper / Broker</th>
+                <th>Truck / Driver</th>
+                <th>Route Corridor</th>
+                <th>Weight / Commodity</th>
+                <th>Base + Fuel Surcharge</th>
+                <th>Total Due</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="invoiceTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: LIVE TRUCK CCTV STREAMING INTERFACE -->
+    <section id="tab-cctv" class="tab-panel">
+      <div class="cctv-stage">
+        <div class="cctv-header-bar">
+          <div style="display:flex; align-items:center; gap:0.75rem;">
+            <div style="width:12px; height:12px; border-radius:50%; background:var(--accent-rose); animation:pulse 1s infinite;"></div>
+            <div>
+              <h3 style="font-size:1.05rem; font-weight:800;" id="cctvTruckTitle">TRK-101 &bull; 4-Channel Live Security Stream</h3>
+              <p style="font-size:0.75rem; color:var(--text-muted);">Encrypted WebRTC / H.265 Stream &bull; Low Latency (82ms)</p>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:0.75rem;">
+            <select class="form-control" id="cctvTruckSelector" onchange="selectCctvTruck(this.value)">
+              <option value="TRK-101">TRK-101 (Marcus Vance - Freightliner)</option>
+              <option value="TRK-204">TRK-204 (Elena Rostova - Kenworth)</option>
+              <option value="TRK-308">TRK-308 (David Chen - Peterbilt)</option>
+              <option value="TRK-415">TRK-415 (Jamal Washington - Volvo)</option>
+            </select>
+            <button class="btn btn-secondary" onclick="toggleNightVision()">🌙 Night Vision IR</button>
+            <button class="btn btn-secondary" onclick="captureCctvSnapshot()">📸 Snapshot</button>
+          </div>
+        </div>
+
+        <!-- 4-Camera Grid Layout -->
+        <div class="cctv-grid">
+          <!-- CAM 1: Forward Highway Dashcam -->
+          <div class="camera-box">
+            <div class="camera-top-hud">
+              <div>
+                <span class="rec-badge"><span style="width:6px; height:6px; background:#fff; border-radius:50%;"></span> REC</span>
+                <span style="margin-left:0.5rem;">CH-01: ROAD / FORWARD ADAS</span>
+              </div>
+              <div id="cctvTime1">16:42:15 CDT</div>
+            </div>
+            <canvas id="camRoadCanvas" class="cam-canvas"></canvas>
+            <div class="camera-bottom-hud">
+              <span>ADAS: LANE DEPARTURE [PASS] &bull; FCW: 142 FT</span>
+              <span>1080P 30FPS &bull; 2,840 KBPS</span>
+            </div>
+            <div class="camera-footer-controls">
+              <span style="font-size:0.75rem; color:var(--text-muted);">Forward Collision Warning Active</span>
+              <button class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.7rem;" onclick="triggerADASAlert()">Test ADAS Ping</button>
+            </div>
+          </div>
+
+          <!-- CAM 2: Driver Cabin DMS -->
+          <div class="camera-box">
+            <div class="camera-top-hud">
+              <div>
+                <span class="rec-badge"><span style="width:6px; height:6px; background:#fff; border-radius:50%;"></span> REC</span>
+                <span style="margin-left:0.5rem;">CH-02: CABIN / DMS AI</span>
+              </div>
+              <div id="cctvTime2">16:42:15 CDT</div>
+            </div>
+            <canvas id="camCabinCanvas" class="cam-canvas"></canvas>
+            <div class="camera-bottom-hud">
+              <span style="color:var(--accent-emerald);" id="cabinAiStatus">AI: ALERT &amp; ATTENTIVE &bull; EYE CLOSURE: 2%</span>
+              <span>IR ILLUMINATOR ON</span>
+            </div>
+            <div class="camera-footer-controls">
+              <span style="font-size:0.75rem; color:var(--text-muted);">Fatigue / Distraction Detection</span>
+              <button class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.7rem;" onclick="toggleSimulatedDrowsiness()">Simulate Drowsiness Alert</button>
+            </div>
+          </div>
+
+          <!-- CAM 3: Cargo Bay Trailer / Reefer -->
+          <div class="camera-box">
+            <div class="camera-top-hud">
+              <div>
+                <span class="rec-badge"><span style="width:6px; height:6px; background:#fff; border-radius:50%;"></span> REC</span>
+                <span style="margin-left:0.5rem;">CH-03: CARGO BAY / REEFER</span>
+              </div>
+              <div id="cctvTime3">16:42:15 CDT</div>
+            </div>
+            <canvas id="camCargoCanvas" class="cam-canvas"></canvas>
+            <div class="camera-bottom-hud">
+              <span>REEFER TEMP: -10.4°F &bull; DOOR SENSOR: LOCKED</span>
+              <span>MOTION DETECTION ARMED</span>
+            </div>
+            <div class="camera-footer-controls">
+              <span style="font-size:0.75rem; color:var(--text-muted);">Cargo Lock Integrity: OK</span>
+              <button class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.7rem;" onclick="triggerCargoDoorAlert()">Simulate Door Breach</button>
+            </div>
+          </div>
+
+          <!-- CAM 4: Rear / Blindspot Assist -->
+          <div class="camera-box">
+            <div class="camera-top-hud">
+              <div>
+                <span class="rec-badge"><span style="width:6px; height:6px; background:#fff; border-radius:50%;"></span> REC</span>
+                <span style="margin-left:0.5rem;">CH-04: REAR BLINDSPOT</span>
+              </div>
+              <div id="cctvTime4">16:42:15 CDT</div>
+            </div>
+            <canvas id="camRearCanvas" class="cam-canvas"></canvas>
+            <div class="camera-bottom-hud">
+              <span>RADAR PROXIMITY: CLEAR (&gt;25 FT)</span>
+              <span>WIDE ANGLE 170° FOV</span>
+            </div>
+            <div class="camera-footer-controls">
+              <span style="font-size:0.75rem; color:var(--text-muted);">Backing Guidelines Overlay</span>
+              <button class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.7rem;" onclick="toggleRearGrid()">Toggle Grid Lines</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL: Printable / Downloadable Invoice -->
+  <div class="modal-backdrop" id="invoiceModal">
+    <div class="modal-box" style="max-width: 860px;">
+      <div class="modal-header">
+        <h3 style="font-size:1.1rem; font-weight:800;">Logistics Freight Invoice</h3>
+        <button class="btn btn-secondary" onclick="closeInvoiceModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="invoice-sheet" id="printableInvoiceSheet">
+          <div class="sheet-header">
+            <div class="sheet-brand">
+              <h2>TITAN LOGISTICS LLC</h2>
+              <p>ICC-MC: 984521-B &bull; US DOT: 3209841</p>
+              <p>4400 Freightway Blvd, Chicago, IL 60609 &bull; dispatch@titanlogistics.com</p>
+            </div>
+            <div class="sheet-meta">
+              <h3 style="font-size:1.4rem; color:#1e293b; font-weight:800;" id="sheetInvoiceNum">INV-84920</h3>
+              <p style="font-size:0.8rem; color:#64748b;" id="sheetDate">Date: Sep 28, 2026</p>
+              <p style="font-size:0.8rem; color:#64748b;" id="sheetDueDate">Terms: Net 30</p>
+            </div>
+          </div>
+
+          <div class="sheet-grid-bill">
+            <div>
+              <strong style="color:#64748b; font-size:0.72rem; text-transform:uppercase;">Bill To (Shipper / Broker):</strong>
+              <div style="font-weight:700; font-size:1rem; margin-top:0.2rem;" id="sheetClientName">Walmart Distribution Inc.</div>
+              <div style="color:#475569;" id="sheetClientAddress">702 SW 8th St, Bentonville, AR 72716</div>
+              <div style="color:#64748b;" id="sheetClientPo">PO / Reference: PO-8921-WMT</div>
+            </div>
+            <div>
+              <strong style="color:#64748b; font-size:0.72rem; text-transform:uppercase;">Shipment &amp; Route Details:</strong>
+              <div style="margin-top:0.2rem;" id="sheetRouteInfo">Chicago Terminal &rarr; Dallas Regional Hub</div>
+              <div style="color:#475569;" id="sheetTruckDriver">Carrier Unit: TRK-101 (Driver: Marcus Vance)</div>
+              <div style="color:#64748b;" id="sheetBol">Bill of Lading (BOL): BOL-IL-99412</div>
+            </div>
+          </div>
+
+          <table class="sheet-table">
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th>Rate Basis</th>
+                <th>Quantity</th>
+                <th style="text-align:right;">Amount ($)</th>
+              </tr>
+            </thead>
+            <tbody id="sheetLineItems"></tbody>
+          </table>
+
+          <div class="sheet-totals">
+            <div class="sheet-total-row">
+              <span style="color:#64748b;">Subtotal:</span>
+              <strong id="sheetSubtotal">$3,420.00</strong>
+            </div>
+            <div class="sheet-total-row">
+              <span style="color:#64748b;">Fuel Surcharge (FSC):</span>
+              <strong id="sheetFuelSurcharge">$442.00</strong>
+            </div>
+            <div class="sheet-total-row">
+              <span style="color:#64748b;">Accessorials / Detention:</span>
+              <strong id="sheetAccessorials">$150.00</strong>
+            </div>
+            <div class="sheet-total-row sheet-grand-total">
+              <span>Total Amount Due:</span>
+              <span id="sheetGrandTotal">$4,012.00</span>
+            </div>
+          </div>
+
+          <div style="margin-top:2rem; border-top:1px dashed #cbd5e1; padding-top:1rem; font-size:0.75rem; color:#64748b;">
+            <p><strong>Remittance Instructions:</strong> Wire / ACH: Chase Commercial Bank &bull; Routing: 071000013 &bull; Acct: 88291039481 &bull; Remit notice to accounting@titanlogistics.com</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeInvoiceModal()">Close</button>
+        <button class="btn btn-emerald" onclick="printInvoice()">🖨️ Print / Save as PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Pay Stub Breakdown -->
+  <div class="modal-backdrop" id="payStubModal">
+    <div class="modal-box" style="max-width: 760px;">
+      <div class="modal-header">
+        <h3 style="font-size:1.1rem; font-weight:800;">Official Driver Settlement &amp; Pay Statement</h3>
+        <button class="btn btn-secondary" onclick="closePayStubModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="invoice-sheet" id="printablePayStubSheet">
+          <div class="sheet-header">
+            <div class="sheet-brand">
+              <h2>TITAN FLEET LOGISTICS</h2>
+              <p>Driver Payroll &amp; Settlement Statement</p>
+            </div>
+            <div class="sheet-meta">
+              <h3 style="font-size:1.2rem; color:#1e293b; font-weight:800;" id="stubPayPeriod">Period: 09/14/2026 - 09/27/2026</h3>
+              <p style="font-size:0.8rem; color:#64748b;" id="stubPayDate">Disbursement Date: 09/28/2026</p>
+            </div>
+          </div>
+
+          <div class="sheet-grid-bill">
+            <div>
+              <strong style="color:#64748b; font-size:0.72rem; text-transform:uppercase;">Driver Information:</strong>
+              <div style="font-weight:700; font-size:1rem; margin-top:0.2rem;" id="stubDriverName">Marcus Vance</div>
+              <div style="color:#475569;" id="stubDriverId">Employee ID: DRV-0842 &bull; CDL: IL-884920</div>
+            </div>
+            <div>
+              <strong style="color:#64748b; font-size:0.72rem; text-transform:uppercase;">Performance Summary:</strong>
+              <div style="margin-top:0.2rem;" id="stubMilesTotal">Dispatched Miles: 4,920 mi</div>
+              <div style="color:#475569;" id="stubMpg">Fleet MPG Avg: 7.6 MPG (Bonus Tier 1)</div>
+            </div>
+          </div>
+
+          <table class="sheet-table">
+            <thead>
+              <tr>
+                <th>Earnings Category</th>
+                <th>Rate / Base</th>
+                <th>Hours / Miles</th>
+                <th style="text-align:right;">Total Amount ($)</th>
+              </tr>
+            </thead>
+            <tbody id="stubEarningsBody"></tbody>
+          </table>
+
+          <div class="sheet-totals">
+            <div class="sheet-total-row">
+              <span style="color:#64748b;">Gross Earnings:</span>
+              <strong id="stubGross">$3,845.20</strong>
+            </div>
+            <div class="sheet-total-row">
+              <span style="color:#64748b;">Tax Withholdings (FICA/Fed):</span>
+              <strong style="color:#e11d48;" id="stubTaxes">-$684.20</strong>
+            </div>
+            <div class="sheet-total-row">
+              <span style="color:#64748b;">Benefits &amp; Fuel Deduction:</span>
+              <strong style="color:#e11d48;" id="stubDeductions">-$140.00</strong>
+            </div>
+            <div class="sheet-total-row sheet-grand-total">
+              <span>Net Direct Deposit:</span>
+              <span id="stubNetPayout">$3,021.00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closePayStubModal()">Close</button>
+        <button class="btn btn-emerald" onclick="printPayStub()">🖨️ Print Settlement</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Create New Freight Invoice -->
+  <div class="modal-backdrop" id="newInvoiceModal">
+    <div class="modal-box" style="max-width: 620px;">
+      <div class="modal-header">
+        <h3 style="font-size:1.05rem; font-weight:800;">Create Freight Invoice</h3>
+        <button class="btn btn-secondary" onclick="closeNewInvoiceModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Shipper / Client Name</label>
+            <input type="text" class="form-control" id="newShipper" placeholder="e.g. Home Depot Logistics">
+          </div>
+          <div class="form-group">
+            <label>Assigned Unit / Trip</label>
+            <select class="form-control" id="newTruckSelect">
+              <option value="TRK-101">TRK-101 (Marcus Vance)</option>
+              <option value="TRK-204">TRK-204 (Elena Rostova)</option>
+              <option value="TRK-308">TRK-308 (David Chen)</option>
+              <option value="TRK-415">TRK-415 (Jamal Washington)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Origin Hub</label>
+            <input type="text" class="form-control" id="newOrigin" placeholder="e.g. Chicago, IL">
+          </div>
+          <div class="form-group">
+            <label>Destination Hub</label>
+            <input type="text" class="form-control" id="newDestination" placeholder="e.g. Dallas, TX">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Base Freight Haul ($)</label>
+            <input type="number" class="form-control" id="newBaseRate" value="3200">
+          </div>
+          <div class="form-group">
+            <label>DOE Fuel Surcharge ($)</label>
+            <input type="number" class="form-control" id="newFscRate" value="480">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Weight (lbs) &amp; Commodity</label>
+            <input type="text" class="form-control" id="newCommodity" placeholder="e.g. 42,000 lbs - Refrigerated Produce">
+          </div>
+          <div class="form-group">
+            <label>Bill of Lading (BOL #)</label>
+            <input type="text" class="form-control" id="newBol" placeholder="e.g. BOL-99482">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeNewInvoiceModal()">Cancel</button>
+        <button class="btn" onclick="saveNewInvoice()">Generate &amp; Issue Invoice</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Center -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Modular Scripts -->
+  <script src="js/data.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/fuel.js"></script>
+  <script src="js/drivers.js"></script>
+  <script src="js/billing.js"></script>
+  <script src="js/cctv.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
